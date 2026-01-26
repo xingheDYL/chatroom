@@ -1,0 +1,82 @@
+server:
+  port: 8901
+
+spring:
+  application:
+    name: chatroom
+
+  datasource:
+    #    todo
+    url: jdbc:mysql://localhost:3306/chatroom?createDatabaseIfNotExist=true&useSSL=false&allowMultiQueries=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    initialization:
+      mode: never
+    # MySQL 5.7 使用 utf8mb4
+    connectionProperties: useUnicode=true;characterEncoding=UTF-8
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  mail:
+    host: smtp.qq.com
+    port: 465
+#    todo
+    username: xxxx
+    password: xxxx
+    protocol: smtps
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# JWT Configuration
+jwt:
+  secret: chatroom-super-secret-jwt-key-for-hs512-algorithm-must-be-at-least-64-bytes-long-1234567890
+  expiration: 86400000  # 24 hours in milliseconds
+  refresh-expiration: 604800000  # 7 days in milliseconds
+
+# WebRTC Configuration
+webrtc:
+  stun-url: stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302
+  turn-url: turn:your-turn-server.com:3478
+  turn-username: ${TURN_USERNAME:}
+  turn-credential: ${TURN_CREDENTIAL:}
+
+# CORS Configuration
+cors:
+#  todo
+  allowed-origins: http://localhost:5173,http://localhost:3000,http://localhost:8188,http://xxxx,http://xxxx:8901
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600
+
+# Logging
+logging:
+  level:
+    com.chat: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
