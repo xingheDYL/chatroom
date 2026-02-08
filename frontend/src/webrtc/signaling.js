@@ -34,8 +34,8 @@ export class SignalingClient {
       wsBaseUrl = process.env.VUE_APP_WS_BASE_URL
     } else if (process.env.NODE_ENV === 'production') {
       // 生产环境但未配置环境变量：使用当前页面的协议和域名
-      // 这样会通过 ws://域名/ws 的方式连接（如果开放了 8901 端口）
-      // 或者通过 Nginx 代理 /ws/ 到后端 8901 端口
+      // 这样会通过 ws://域名/ws 的方式连接（如果开放了 8902 端口）
+      // 或者通过 Nginx 代理 /ws/ 到后端 8902 端口
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const hostname = window.location.hostname
       const port = window.location.port || (window.location.protocol === 'https:' ? '443' : '80')
@@ -47,10 +47,10 @@ export class SignalingClient {
         wsBaseUrl = `${protocol}//${hostname}:${port}`
       }
     } else {
-      // 开发环境：使用当前页面的主机名和端口 8901
+      // 开发环境：使用当前页面的主机名和端口 8902
       const protocol = 'ws'
       const hostname = window.location.hostname
-      wsBaseUrl = `${protocol}://${hostname}:8901`
+      wsBaseUrl = `${protocol}://${hostname}:8902`
     }
 
     return `${wsBaseUrl}/${path}`

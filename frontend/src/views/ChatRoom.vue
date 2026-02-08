@@ -516,10 +516,10 @@ export default {
                     wsBaseUrl = `${protocol}//${hostname}:${port}`
                 }
             } else {
-                // 开发环境：使用当前页面的主机名和端口 8901
+                // 开发环境：使用当前页面的主机名和端口 8902
                 const protocol = 'ws'
                 const hostname = window.location.hostname
-                wsBaseUrl = `${protocol}://${hostname}:8901`
+                wsBaseUrl = `${protocol}://${hostname}:8902`
             }
 
             const wsUrl = `${wsBaseUrl}/ws/chat/${roomId}?userId=${this.currentUserId}`

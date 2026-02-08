@@ -23,11 +23,12 @@ module.exports = defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8901',
-        changeOrigin: true
+        target: 'http://localhost:8902',
+        changeOrigin: true,
+        timeout: 60000  // 代理超时时间 60 秒
       },
       '/ws': {
-        target: 'ws://localhost:8901',
+        target: 'ws://localhost:8902',
         ws: true,
         changeOrigin: true
       }

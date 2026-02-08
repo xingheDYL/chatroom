@@ -207,7 +207,19 @@ export default {
           }
         }, 1000)
       } catch (error) {
-        this.$message.error(error.message || '发送验证码失败')
+        // 即使请求超时或失败，后端可能已经发送了验证码
+        // 所以给用户一个友好的提示，而不是报错
+        console.error('发送验证码请求异常:', error)
+        this.$message.warning('验证码可能已发送，请查收邮箱（如果未收到请稍后再试）')
+
+        // 仍然启动倒计时，避免频繁点击
+        this.countdown = 60
+        const timer = setInterval(() => {
+          this.countdown--
+          if (this.countdown <= 0) {
+            clearInterval(timer)
+          }
+        }, 1000)
       } finally {
         this.sendingCode = false
       }
