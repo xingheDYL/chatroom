@@ -117,3 +117,4 @@ fabric.properties
 logs
 .DS_Store
 node_modules
+.claude/*
