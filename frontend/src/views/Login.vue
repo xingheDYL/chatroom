@@ -35,6 +35,24 @@
               />
             </el-form-item>
 
+            <el-form-item prop="captchaAnswer">
+              <div class="captcha-group">
+                <el-input
+                  v-model="passwordForm.captchaAnswer"
+                  placeholder="请输入验证码"
+                  size="large"
+                  prefix-icon="el-icon-key"
+                  maxlength="6"
+                  @keyup.native.enter="handlePasswordLogin"
+                />
+                <captcha-image
+                  ref="passwordCaptcha"
+                  @answer-change="onPasswordCaptchaChange"
+                  @refresh="onPasswordCaptchaRefresh"
+                />
+              </div>
+            </el-form-item>
+
             <el-form-item>
               <el-button
                 type="primary"
@@ -87,6 +105,23 @@
               </div>
             </el-form-item>
 
+            <el-form-item prop="captchaAnswer">
+              <div class="captcha-group">
+                <el-input
+                  v-model="emailForm.captchaAnswer"
+                  placeholder="请输入验证码"
+                  size="large"
+                  prefix-icon="el-icon-key"
+                  maxlength="6"
+                />
+                <captcha-image
+                  ref="emailCaptcha"
+                  @answer-change="onEmailCaptchaChange"
+                  @refresh="onEmailCaptchaRefresh"
+                />
+              </div>
+            </el-form-item>
+
             <el-form-item>
               <el-button
                 type="primary"
@@ -111,22 +146,53 @@
 
 <script>
 import { mapActions } from 'vuex'
+import CaptchaImage from '@/components/CaptchaImage.vue'
 
 export default {
   name: 'Login',
+  components: {
+    CaptchaImage
+  },
   data() {
+    // 自定义验证码验证规则 - 密码登录
+    const validatePasswordCaptcha = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('请输入验证码'))
+      }
+      if (value !== this.passwordCaptchaAnswer) {
+        return callback(new Error('验证码错误，请重新输入'))
+      }
+      callback()
+    }
+
+    // 自定义验证码验证规则 - 邮箱登录
+    const validateEmailCaptcha = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('请输入验证码'))
+      }
+      if (value !== this.emailCaptchaAnswer) {
+        return callback(new Error('验证码错误，请重新输入'))
+      }
+      callback()
+    }
+
     return {
       activeTab: 'password',
       loading: false,
       sendingCode: false,
       countdown: 0,
+      // 验证码答案
+      passwordCaptchaAnswer: '',
+      emailCaptchaAnswer: '',
       passwordForm: {
         username: '',
-        password: ''
+        password: '',
+        captchaAnswer: ''
       },
       emailForm: {
         email: '',
-        code: ''
+        code: '',
+        captchaAnswer: ''
       },
       passwordRules: {
         username: [
@@ -134,6 +200,9 @@ export default {
         ],
         password: [
           { required: true, message: '请输入密码', trigger: 'blur' }
+        ],
+        captchaAnswer: [
+          { required: true, validator: validatePasswordCaptcha, trigger: 'blur' }
         ]
       },
       emailRules: {
@@ -144,12 +213,71 @@ export default {
         code: [
           { required: true, message: '请输入验证码', trigger: 'blur' },
           { len: 6, message: '验证码必须是6位数字', trigger: 'blur' }
+        ],
+        captchaAnswer: [
+          { required: true, validator: validateEmailCaptcha, trigger: 'blur' }
         ]
       }
     }
   },
   methods: {
     ...mapActions('auth', ['login', 'sendVerificationCode', 'loginWithCode']),
+
+    // 刷新密码登录验证码
+    refreshPasswordCaptcha() {
+      if (this.$refs.passwordCaptcha) {
+        this.$refs.passwordCaptcha.refreshCaptcha()
+      }
+    },
+
+    // 刷新邮箱登录验证码
+    refreshEmailCaptcha() {
+      if (this.$refs.emailCaptcha) {
+        this.$refs.emailCaptcha.refreshCaptcha()
+      }
+    },
+
+    // 密码登录验证码答案变化
+    onPasswordCaptchaChange(answer) {
+      this.passwordCaptchaAnswer = answer
+      // 清除之前的验证错误状态
+      this.$nextTick(() => {
+        if (this.$refs.passwordFormRef) {
+          this.$refs.passwordFormRef.clearValidate('captchaAnswer')
+        }
+      })
+    },
+
+    // 密码登录验证码刷新
+    onPasswordCaptchaRefresh() {
+      // 清空用户输入，避免用旧答案验证新验证码
+      this.passwordForm.captchaAnswer = ''
+      // 清除之前的验证错误
+      if (this.$refs.passwordFormRef) {
+        this.$refs.passwordFormRef.clearValidate('captchaAnswer')
+      }
+    },
+
+    // 邮箱登录验证码答案变化
+    onEmailCaptchaChange(answer) {
+      this.emailCaptchaAnswer = answer
+      // 清除之前的验证错误状态
+      this.$nextTick(() => {
+        if (this.$refs.emailFormRef) {
+          this.$refs.emailFormRef.clearValidate('captchaAnswer')
+        }
+      })
+    },
+
+    // 邮箱登录验证码刷新
+    onEmailCaptchaRefresh() {
+      // 清空用户输入，避免用旧答案验证新验证码
+      this.emailForm.captchaAnswer = ''
+      // 清除之前的验证错误
+      if (this.$refs.emailFormRef) {
+        this.$refs.emailFormRef.clearValidate('captchaAnswer')
+      }
+    },
 
     async handlePasswordLogin() {
       // 使用 try-catch 处理表单验证
@@ -177,6 +305,8 @@ export default {
       } catch (error) {
         console.error('登录失败:', error)
         this.$message.error(error.message || '登录失败')
+        // 登录失败后刷新验证码
+        this.refreshPasswordCaptcha()
       } finally {
         this.loading = false
       }
@@ -251,6 +381,8 @@ export default {
       } catch (error) {
         console.error('邮箱登录失败:', error)
         this.$message.error(error.message || '登录失败')
+        // 登录失败后刷新验证码
+        this.refreshEmailCaptcha()
       } finally {
         this.loading = false
       }
@@ -306,6 +438,16 @@ export default {
 }
 
 .code-input-group .el-input {
+  flex: 1;
+}
+
+.captcha-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.captcha-group .el-input {
   flex: 1;
 }
 
