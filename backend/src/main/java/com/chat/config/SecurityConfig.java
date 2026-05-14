@@ -50,7 +50,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 // 配置授权规则
                 .authorizeRequests()
                         // 公开端点
-                        .antMatchers("/api/auth/**", "/ws/**", "/error").permitAll()
+                        .antMatchers("/api/auth/register", "/api/auth/login",
+                                "/api/auth/send-code", "/api/auth/login-with-code",
+                                "/ws/**", "/error").permitAll()
+                        // 修改密码需要认证
+                        .antMatchers("/api/auth/**").authenticated()
                         // 其他所有端点需要认证
                         .anyRequest().authenticated()
 

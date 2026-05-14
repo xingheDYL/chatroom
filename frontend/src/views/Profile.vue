@@ -1,11 +1,11 @@
 <template>
   <div class="profile-page">
+    <el-button class="back-button" @click="goBack" icon="el-icon-arrow-left">返回聊天室</el-button>
     <div class="profile-card">
       <div class="avatar-section">
         <el-avatar :size="120" :src="currentUser.avatar">
           {{ currentUser.username ? currentUser.username[0] : '?' }}
         </el-avatar>
-        <el-button type="primary" link>更换头像</el-button>
       </div>
 
       <div class="info-section">
@@ -24,25 +24,40 @@
           <span class="label">用户ID</span>
           <span class="value">{{ currentUser.id }}</span>
         </div>
-        <div class="detail-item">
-          <span class="label">加入时间</span>
-          <span class="value">{{ formatDate(currentUser.createdAt) }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="label">上次登录</span>
-          <span class="value">{{ formatDate(currentUser.lastLoginAt) }}</span>
-        </div>
       </div>
 
       <el-divider />
 
       <div class="actions-section">
+        <el-button @click="showPasswordDialog = true">
+          <i class="el-icon-edit"></i>
+          修改密码
+        </el-button>
         <el-button type="danger" @click="handleLogout">
           <i class="el-icon-switch-button"></i>
           退出登录
         </el-button>
       </div>
     </div>
+
+    <!-- 修改密码对话框 -->
+    <el-dialog title="修改密码" :visible.sync="showPasswordDialog" width="400px">
+      <el-form :model="passwordForm" :rules="passwordRules" ref="passwordForm" label-width="100px">
+        <el-form-item label="旧密码" prop="oldPassword">
+          <el-input v-model="passwordForm.oldPassword" type="text" placeholder="请输入旧密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码（至少6位）" show-password />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="cancelPasswordChange">取 消</el-button>
+        <el-button type="primary" @click="handlePasswordChange" :loading="passwordLoading">确 定</el-button>
+      </div>
+    </el-dialog>
 
     <div class="settings-card">
       <h3>隐私与安全</h3>
@@ -74,6 +89,48 @@ import { mapState, mapActions } from 'vuex'
 
 export default {
   name: 'Profile',
+  data() {
+    const validateConfirmPassword = (rule, value, callback) => {
+      if (value === '') {
+        callback(new Error('请再次输入新密码'))
+      } else if (value !== this.passwordForm.newPassword) {
+        callback(new Error('两次输入的密码不一致'))
+      } else {
+        callback()
+      }
+    }
+
+    const validateNewPassword = (rule, value, callback) => {
+      if (value === this.passwordForm.oldPassword) {
+        callback(new Error('新密码不能与旧密码相同'))
+      } else {
+        callback()
+      }
+    }
+
+    return {
+      showPasswordDialog: false,
+      passwordLoading: false,
+      passwordForm: {
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      },
+      passwordRules: {
+        oldPassword: [
+          { required: true, message: '请输入旧密码', trigger: 'blur' }
+        ],
+        newPassword: [
+          { required: true, message: '请输入新密码', trigger: 'blur' },
+          { min: 6, message: '新密码长度不能少于6位', trigger: 'blur' },
+          { validator: validateNewPassword, trigger: 'blur' }
+        ],
+        confirmPassword: [
+          { required: true, validator: validateConfirmPassword, trigger: 'blur' }
+        ]
+      }
+    }
+  },
   computed: {
     ...mapState('auth', ['user']),
     currentUser() {
@@ -81,7 +138,7 @@ export default {
     }
   },
   methods: {
-    ...mapActions('auth', ['logout']),
+    ...mapActions('auth', ['logout', 'updatePassword']),
 
     formatStatus(status) {
       const statusMap = {
@@ -98,6 +155,10 @@ export default {
       return new Date(dateString).toLocaleDateString()
     },
 
+    goBack() {
+      this.$router.push('/chat')
+    },
+
     async handleLogout() {
       try {
         await this.$confirm('确定要退出登录吗？', '确认退出', {
@@ -110,6 +171,36 @@ export default {
       } catch {
         // 用户取消
       }
+    },
+
+    async handlePasswordChange() {
+      try {
+        await this.$refs.passwordForm.validate()
+        this.passwordLoading = true
+        await this.updatePassword({
+          oldPassword: this.passwordForm.oldPassword,
+          newPassword: this.passwordForm.newPassword
+        })
+        this.$message.success('密码修改成功，请重新登录')
+        await this.logout()
+        this.$router.push('/login')
+      } catch (error) {
+        if (error !== 'cancel') {
+          this.$message.error(error.message || '密码修改失败')
+        }
+      } finally {
+        this.passwordLoading = false
+      }
+    },
+
+    cancelPasswordChange() {
+      this.showPasswordDialog = false
+      this.passwordForm = {
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }
+      this.$refs.passwordForm?.clearValidate()
     }
   }
 }
@@ -123,6 +214,10 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.back-button {
+  align-self: flex-start;
 }
 
 .profile-card,

@@ -215,6 +215,24 @@ public class AuthService {
     }
 
     /**
+     * 修改用户密码
+     */
+    @Transactional
+    public void updatePassword(Long userId, String oldPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+
+        // 验证旧密码
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("旧密码不正确");
+        }
+
+        // 更新密码
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    /**
      * 生成随机验证码
      */
     private String generateVerificationCode() {

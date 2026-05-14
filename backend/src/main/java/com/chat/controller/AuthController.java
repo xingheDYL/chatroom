@@ -100,6 +100,26 @@ public class AuthController {
     }
 
     /**
+     * PUT /api/auth/password
+     * 修改用户密码
+     */
+    @PutMapping("/password")
+    public ResponseEntity<ApiResponse<Void>> updatePassword(
+            @Valid @RequestBody UpdatePasswordRequest request) {
+        try {
+            authService.updatePassword(
+                    getCurrentUserId(),
+                    request.getOldPassword(),
+                    request.getNewPassword()
+            );
+            return ResponseEntity.ok(ApiResponse.success("密码修改成功", null));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("密码修改失败", e.getMessage()));
+        }
+    }
+
+    /**
      * 从安全上下文获取当前用户ID
      */
     private Long getCurrentUserId() {

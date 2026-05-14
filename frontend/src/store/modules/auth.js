@@ -156,6 +156,11 @@ const actions = {
     } finally {
       commit('CLEAR_AUTH')
     }
+  },
+
+  async updatePassword(_, { oldPassword, newPassword }) {
+    const data = await authApi.updatePassword({ oldPassword, newPassword })
+    return { data: data.data }
   }
 }
 

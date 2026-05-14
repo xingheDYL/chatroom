@@ -76,6 +76,10 @@ export const authApi = {
 
   logout() {
     return api.post('/auth/logout')
+  },
+
+  updatePassword(data) {
+    return api.put('/auth/password', data)
   }
 }
 

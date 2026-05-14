@@ -118,3 +118,4 @@ logs
 .DS_Store
 node_modules
 .claude/*
+.dist/*

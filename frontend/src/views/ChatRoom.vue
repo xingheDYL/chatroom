@@ -36,7 +36,7 @@
                 <div class="chat-header">
                     <h3>{{ currentRoom ? currentRoom.name : '' }}</h3>
                     <div class="header-right">
-                        <div class="user-info">
+                        <div class="user-info" @click="goToProfile">
                             <el-avatar :src="currentUser.avatar">{{
                                 currentUser.username ? currentUser.username[0] : '?'
                                 }}
@@ -356,6 +356,10 @@ export default {
             } catch (error) {
                 this.$message.error('退出登录失败')
             }
+        },
+
+        goToProfile() {
+            this.$router.push('/profile')
         },
 
         async startPrivateChat(userId, username) {
@@ -759,6 +763,14 @@ export default {
     display: flex;
     align-items: center;
     gap: 10px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.user-info:hover {
+    background: #f5f5f5;
 }
 
 .user-info .username {
