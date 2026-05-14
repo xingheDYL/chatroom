@@ -72,20 +72,50 @@
                                 <span class="sender-name">{{ message.senderName }}</span>
                                 <span class="message-time">{{ formatTime(message.createdAt) }}</span>
                             </div>
-                            <div class="message-text">{{ message.content }}<small v-if="!message.content"
-                                                                                  style="color:red">(空)</small></div>
+                            <div class="message-text">
+                                <!-- 文本消息 -->
+                                <template v-if="message.messageType === 'text'">
+                                    {{ message.content }}<small v-if="!message.content" style="color:red">(空)</small>
+                                </template>
+                                <!-- 文件消息 -->
+                                <template v-else-if="message.messageType === 'file'">
+                                    <div class="file-message" @click="openFile(message.content)">
+                                        <i class="el-icon-document"></i>
+                                        <span>{{ getFileName(message.content) }}</span>
+                                        <i class="el-icon-download download-icon"></i>
+                                    </div>
+                                </template>
+                                <!-- 其他消息类型 -->
+                                <template v-else>
+                                    {{ message.content }}
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="input-area">
-                    <el-input
-                            v-model="messageInput"
-                            type="textarea"
-                            :rows="3"
-                            placeholder="输入消息... (端到端加密)"
-                            @keydown.native.ctrl.enter="sendMessage"
+                    <input
+                            ref="fileInput"
+                            type="file"
+                            style="display: none"
+                            @change="handleFileSelect"
                     />
+                    <div class="input-controls">
+                        <el-button
+                                icon="el-icon-paperclip"
+                                circle
+                                @click="$refs.fileInput.click()"
+                                title="发送文件"
+                        />
+                        <el-input
+                                v-model="messageInput"
+                                type="textarea"
+                                :rows="3"
+                                placeholder="输入消息... (端到端加密)"
+                                @keydown.native.ctrl.enter="sendMessage"
+                        />
+                    </div>
                     <el-button
                             type="primary"
                             @click="sendMessage"
@@ -162,6 +192,8 @@ import {mapState, mapGetters, mapActions} from 'vuex'
 import {WebRTCManager} from '@/webrtc/WebRTCManager'
 import {SignalingClient} from '@/webrtc/signaling'
 import {createMessage, serializeMessage, MessageType, formatTimestamp} from '@/utils/encryption'
+import {chatApi} from '@/api/chat'
+import api from '@/api/auth'
 
 export default {
     name: 'ChatRoom',
@@ -173,6 +205,7 @@ export default {
             showJoinRoomDialog: false,
             isWebRTCConnected: false,
             isSignalingConnected: false,
+            fileLoading: false,
             newRoomForm: {
                 name: '',
                 description: '',
@@ -592,6 +625,71 @@ export default {
             this.isSignalingConnected = false
         },
 
+        async handleFileSelect(event) {
+            const file = event.target.files[0]
+            if (!file) return
+
+            // 检查文件大小（10MB限制）
+            const maxSize = 10 * 1024 * 1024
+            if (file.size > maxSize) {
+                this.$message.error('文件大小不能超过10MB')
+                return
+            }
+
+            try {
+                this.fileLoading = true
+                const response = await chatApi.uploadFile(file)
+                const fileData = response.data
+
+                // 发送文件消息
+                this.sendFileMessage(fileData)
+            } catch (error) {
+                this.$message.error('文件上传失败: ' + (error.message || '未知错误'))
+            } finally {
+                this.fileLoading = false
+                // 清空文件选择
+                event.target.value = ''
+            }
+        },
+
+        sendFileMessage(fileData) {
+            const fileMessage = createMessage(MessageType.FILE, JSON.stringify({
+                filename: fileData.filename,
+                originalFilename: fileData.originalFilename,
+                size: fileData.size,
+                url: fileData.url
+            }), {
+                senderId: this.currentUserId,
+                senderName: this.currentUser.username || '我'
+            })
+
+            // 通过WebRTC发送
+            if (this.isWebRTCConnected) {
+                this.webRTCManager.broadcast(serializeMessage(fileMessage))
+            }
+
+            // 通过WebSocket发送以保存到服务器
+            if (this.chatWebSocket?.readyState === WebSocket.OPEN) {
+                this.chatWebSocket.send(JSON.stringify({
+                    type: 'message',
+                    content: fileMessage.content,
+                    messageType: 'file'
+                }))
+            }
+
+            // 添加到本地显示
+            this.addMessage({
+                id: fileMessage.id,
+                senderId: this.currentUserId,
+                senderName: this.currentUser.username || '我',
+                content: fileMessage.content,
+                messageType: 'file',
+                createdAt: new Date().toISOString()
+            })
+
+            this.$nextTick(() => this.scrollToBottom())
+        },
+
         sendMessage() {
             if (!this.messageInput.trim()) return
 
@@ -633,6 +731,34 @@ export default {
         scrollToBottom() {
             if (this.$refs.messagesContainer) {
                 this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight
+            }
+        },
+
+        async openFile(content) {
+            try {
+                const fileData = JSON.parse(content)
+                const blob = await api.get(chatApi.getFileUrl(fileData.filename), {
+                    responseType: 'blob'
+                })
+                const url = window.URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute('download', fileData.originalFilename || 'download')
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                window.URL.revokeObjectURL(url)
+            } catch (error) {
+                this.$message.error('文件下载失败')
+            }
+        },
+
+        getFileName(content) {
+            try {
+                const fileData = JSON.parse(content)
+                return fileData.originalFilename || '未知文件'
+            } catch (error) {
+                return '未知文件'
             }
         }
     }
@@ -844,11 +970,69 @@ export default {
     padding: 20px;
     border-top: 1px solid #e0e0e0;
     display: flex;
+    flex-direction: column;
     gap: 12px;
 }
 
-.input-area .el-textarea {
+.input-controls {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.input-controls .el-textarea {
     flex: 1;
+}
+
+.file-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #f0f0f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    color: #333;
+    font-weight: 500;
+}
+
+.file-message:hover {
+    background: #e0e0e0;
+}
+
+.file-message i {
+    font-size: 18px;
+    color: #667eea;
+}
+
+.file-message span {
+    flex: 1;
+    color: #333;
+    font-size: 14px;
+}
+
+.file-message .download-icon {
+    margin-left: auto;
+    opacity: 0.6;
+    color: #667eea;
+}
+
+.message.own .file-message {
+    background: #667eea;
+    color: white;
+}
+
+.message.own .file-message span {
+    color: white;
+}
+
+.message.own .file-message i {
+    color: white;
+}
+
+.message.own .file-message .download-icon {
+    color: white;
 }
 
 .users-panel {

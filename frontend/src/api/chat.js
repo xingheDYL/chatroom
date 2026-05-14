@@ -39,5 +39,19 @@ export const chatApi = {
 
   createOrGetPrivateChat(userId) {
     return api.post(`/rooms/private/${userId}`)
+  },
+
+  uploadFile(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+
+  getFileUrl(filename) {
+    return `/files/${filename}`
   }
 }
